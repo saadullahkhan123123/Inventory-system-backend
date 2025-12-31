@@ -15,6 +15,84 @@ const ItemSchema = new mongoose.Schema({
     uppercase: true,
     index: true
   },
+  // Product Type: Cover, Form, or Plate
+  productType: {
+    type: String,
+    enum: ['Cover', 'Form', 'Plate'],
+    required: true,
+    default: 'Cover',
+    index: true
+  },
+  // Cover Type (only if productType is 'Cover')
+  coverType: {
+    type: String,
+    enum: [
+      'Aster Cover',
+      'Without Aster Cover',
+      'Color Cover',
+      'Genuine Cover',
+      'PC Cover',
+      'Tissue Cover',
+      'Belta Cover',
+      'Line Cover',
+      'Suzuki Cover',
+      'Calendar Cover',
+      'Seat Cushion'
+    ],
+    default: '',
+    trim: true,
+    index: true
+  },
+  // Plate-specific fields (only if productType is 'Plate')
+  plateCompany: {
+    type: String,
+    enum: ['DY', 'AH', 'BELTA', ''],
+    default: '',
+    trim: true,
+    index: true
+  },
+  bikeName: {
+    type: String,
+    enum: ['70', 'CD', '125', 'Yamaha', 'Plastic Plate', ''],
+    default: '',
+    trim: true,
+    index: true
+  },
+  plateType: {
+    type: String,
+    enum: [
+      'Single',
+      'Double',
+      'Side',
+      'Lahore',
+      'Double (Gormore)',
+      ''
+    ],
+    default: '',
+    trim: true,
+    index: true
+  },
+  // Form-specific fields (only if productType is 'Form')
+  formCompany: {
+    type: String,
+    enum: ['AG', 'MR', 'UC', 'MASTER', ''],
+    default: '',
+    trim: true,
+    index: true
+  },
+  formType: {
+    type: String,
+    enum: ['Soft', 'Hard', ''],
+    default: '',
+    trim: true,
+    index: true
+  },
+  formVariant: {
+    type: String,
+    trim: true,
+    default: '',
+    index: true
+  },
   category: { 
     type: String, 
     default: "General",
@@ -38,8 +116,15 @@ const ItemSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  // Base price for the product
   price: { 
     type: Number, 
+    default: 0,
+    min: 0
+  },
+  // Base price specific to cover type (if applicable)
+  basePrice: {
+    type: Number,
     default: 0,
     min: 0
   },

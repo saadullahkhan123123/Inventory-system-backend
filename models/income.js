@@ -11,6 +11,46 @@ const SoldProductSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  productType: { 
+    type: String, 
+    enum: ['Cover', 'Form', 'Plate'], 
+    default: 'Cover' 
+  },
+  coverType: { 
+    type: String, 
+    trim: true, 
+    default: '' 
+  },
+  plateCompany: { 
+    type: String, 
+    enum: ['DY', 'AH', 'BELTA', ''], 
+    default: '' 
+  },
+  bikeName: { 
+    type: String, 
+    trim: true, 
+    default: '' 
+  },
+  plateType: { 
+    type: String, 
+    trim: true, 
+    default: '' 
+  },
+  formCompany: { 
+    type: String, 
+    enum: ['AG', 'MR', 'UC', 'MASTER', ''], 
+    default: '' 
+  },
+  formType: { 
+    type: String, 
+    enum: ['Soft', 'Hard', ''], 
+    default: '' 
+  },
+  formVariant: { 
+    type: String, 
+    trim: true, 
+    default: '' 
+  },
   quantity: { 
     type: Number, 
     required: true,

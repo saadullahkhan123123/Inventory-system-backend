@@ -16,7 +16,7 @@ app.use(
       'http://localhost:3000', // React Local
       'http://localhost:5000'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
   })
 );
@@ -34,7 +34,7 @@ mongoose
   .catch((err) => console.error('❌ MongoDB connection failed:', err.message));
 
 /* -----------------------------------------
-   ✅ Root route (IMPORTANT for Render)
+   ✅ Root route
 ------------------------------------------- */
 app.get('/', (req, res) => {
   res.json({
@@ -42,29 +42,43 @@ app.get('/', (req, res) => {
     message: 'Backend is live and working!',
     time: new Date(),
     health: 'All systems functional',
+    backend: 'Vercel Serverless',
   });
 });
 
 /* -----------------------------------------
-   ✅ Test route
+   ✅ Test route (without /api prefix for Vercel)
+------------------------------------------- */
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Backend test API is running!',
+    timestamp: new Date(),
+    endpoints: ['/api/items', '/api/income', '/api/slips', '/api/analytics'],
+    backend: 'Vercel Serverless',
+  });
+});
+
+/* -----------------------------------------
+   ✅ Test route with /api prefix (for compatibility)
 ------------------------------------------- */
 app.get('/api/test', (req, res) => {
   res.json({
     message: 'Backend test API is running!',
     timestamp: new Date(),
     endpoints: ['/api/items', '/api/income', '/api/slips', '/api/analytics'],
+    backend: 'Vercel Serverless',
   });
 });
 
 /* -----------------------------------------
    ✅ Import routes
 ------------------------------------------- */
-app.use('/api/items', require('./routes/items'));
-app.use('/api/income', require('./routes/income'));
-app.use('/api/slips', require('./routes/slips'));
-app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/history', require('./routes/history'));
-app.use('/api/customer-history', require('./routes/customerHistory'));
+app.use('/api/items', require('../routes/items'));
+app.use('/api/income', require('../routes/income'));
+app.use('/api/slips', require('../routes/slips'));
+app.use('/api/analytics', require('../routes/analytics'));
+app.use('/api/history', require('../routes/history'));
+app.use('/api/customer-history', require('../routes/customerHistory'));
 
 /* -----------------------------------------
    ✅ 404 Handler (MUST BE LAST)
@@ -76,10 +90,6 @@ app.use((req, res) => {
   });
 });
 
-/* -----------------------------------------
-   ✅ Start Server
-------------------------------------------- */
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+// Export the Express app for Vercel (Vercel handles Express apps automatically)
+module.exports = app;
+

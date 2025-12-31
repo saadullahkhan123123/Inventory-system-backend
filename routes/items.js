@@ -136,11 +136,20 @@ router.post('/', async (req, res) => {
     const { 
       name, 
       sku, 
+      productType,
+      coverType,
+      plateCompany,
+      bikeName,
+      plateType,
+      formCompany,
+      formType,
+      formVariant,
       category, 
       subcategory,
       company,
       quantity, 
-      price, 
+      price,
+      basePrice,
       description,
       minStockLevel,
       maxStockLevel,
@@ -167,14 +176,46 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'SKU already exists' });
     }
 
+    // Validation: If productType is Cover, coverType is required
+    if (productType === 'Cover' && !coverType) {
+      return res.status(400).json({ error: 'Cover Type is required when Product Type is Cover' });
+    }
+
+    // Validation: If productType is Plate, validate required fields
+    if (productType === 'Plate') {
+      if (bikeName === 'Plastic Plate') {
+        // Plastic Plate is standalone, no company/bike/type needed
+      } else {
+        if (!bikeName) {
+          return res.status(400).json({ error: 'Bike Name is required for Plate products (except Plastic Plate)' });
+        }
+        if (!plateType) {
+          return res.status(400).json({ error: 'Plate Type is required for Plate products (except Plastic Plate)' });
+        }
+        // Validate plate combinations (company required for some bikes)
+        if (bikeName === '70' && !plateCompany) {
+          return res.status(400).json({ error: 'Company is required for Bike 70' });
+        }
+      }
+    }
+
     const newItem = new Item({ 
       name: name.trim(),
       sku: sku.toUpperCase().trim(),
+      productType: productType || 'Cover',
+      coverType: productType === 'Cover' ? (coverType || '') : '',
+      plateCompany: productType === 'Plate' ? (plateCompany || '') : '',
+      bikeName: productType === 'Plate' ? (bikeName || '') : '',
+      plateType: productType === 'Plate' ? (plateType || '') : '',
+      formCompany: productType === 'Form' ? (formCompany || '') : '',
+      formType: productType === 'Form' ? (formType || '') : '',
+      formVariant: productType === 'Form' ? (formVariant || '') : '',
       category: category || 'General',
       subcategory: subcategory || '',
       company: company || '',
       quantity: quantity || 0,
       price: price || 0,
+      basePrice: basePrice || price || 0, // Use basePrice if provided, else use price
       costPrice: costPrice || 0,
       description: description || '',
       minStockLevel: minStockLevel || 10,
@@ -207,11 +248,20 @@ router.put('/:id', async (req, res) => {
   try {
     const { 
       name, 
+      productType,
+      coverType,
+      plateCompany,
+      bikeName,
+      plateType,
+      formCompany,
+      formType,
+      formVariant,
       category, 
       subcategory,
       company,
       quantity, 
-      price, 
+      price,
+      basePrice,
       description,
       minStockLevel,
       maxStockLevel,
@@ -224,15 +274,59 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Quantity, price, and cost price must be non-negative' });
     }
 
+    // Validation: If productType is Cover, coverType is required
+    if (productType === 'Cover' && !coverType) {
+      return res.status(400).json({ error: 'Cover Type is required when Product Type is Cover' });
+    }
+
+    // Validation: If productType is Plate, validate required fields
+    if (productType === 'Plate') {
+      if (bikeName === 'Plastic Plate') {
+        // Plastic Plate is standalone
+      } else {
+        if (!bikeName) {
+          return res.status(400).json({ error: 'Bike Name is required for Plate products (except Plastic Plate)' });
+        }
+        if (!plateType) {
+          return res.status(400).json({ error: 'Plate Type is required for Plate products (except Plastic Plate)' });
+        }
+        if (bikeName === '70' && !plateCompany) {
+          return res.status(400).json({ error: 'Company is required for Bike 70' });
+        }
+      }
+    }
+
+    // Validation: If productType is Form, validate required fields
+    if (productType === 'Form') {
+      if (!formCompany) {
+        return res.status(400).json({ error: 'Company is required for Form products' });
+      }
+      if (!formType) {
+        return res.status(400).json({ error: 'Form Type is required for Form products' });
+      }
+      if (!formVariant) {
+        return res.status(400).json({ error: 'Form Variant is required for Form products' });
+      }
+    }
+
     const updatedItem = await Item.findByIdAndUpdate(
       req.params.id,
       {
         name: name?.trim(),
+        productType: productType || 'Cover',
+        coverType: productType === 'Cover' ? (coverType || '') : '',
+        plateCompany: productType === 'Plate' ? (plateCompany || '') : '',
+        bikeName: productType === 'Plate' ? (bikeName || '') : '',
+        plateType: productType === 'Plate' ? (plateType || '') : '',
+        formCompany: productType === 'Form' ? (formCompany || '') : '',
+        formType: productType === 'Form' ? (formType || '') : '',
+        formVariant: productType === 'Form' ? (formVariant || '') : '',
         category: category || 'General',
         subcategory: subcategory || '',
         company: company || '',
         quantity,
         price,
+        basePrice: basePrice !== undefined ? basePrice : price,
         costPrice: costPrice || 0,
         description: description || '',
         minStockLevel: minStockLevel || 10,

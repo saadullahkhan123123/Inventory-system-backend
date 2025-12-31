@@ -105,18 +105,76 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // create slip
-    const newSlip = new Slip({
-      customerName: customerName || 'Walk-in Customer',
-      products: products.map(p => ({
-        productName: p.productName || p.itemName,
-        quantity: p.quantity,
-        unitPrice: p.unitPrice ?? p.price,
-        totalPrice: p.quantity * (p.unitPrice ?? p.price),
+    // Helper function to calculate bulk discount
+    const calculateBulkDiscount = (coverType, quantity, basePrice) => {
+      // Bulk discount applies only to these cover types
+      const bulkDiscountTypes = [
+        'Aster Cover',
+        'Without Aster Cover',
+        'Calendar Cover'
+      ];
+      
+      if (bulkDiscountTypes.includes(coverType) && quantity >= 10) {
+        return 10; // 10 rupees discount per item
+      }
+      return 0;
+    };
+
+    // Process products with pricing logic
+    const processedProducts = products.map(p => {
+      const productName = p.productName || p.itemName;
+      const quantity = p.quantity;
+      const basePrice = p.basePrice || p.unitPrice || p.price || 0;
+      const coverType = p.coverType || '';
+      const productType = p.productType || 'Cover';
+      
+      // Calculate bulk discount if applicable
+      let discountAmount = 0;
+      let discountType = 'none';
+      
+      if (productType === 'Cover' && coverType) {
+        const bulkDiscount = calculateBulkDiscount(coverType, quantity, basePrice);
+        if (bulkDiscount > 0) {
+          discountAmount = bulkDiscount;
+          discountType = 'bulk';
+        }
+      }
+      
+      // Manual discount/override (if admin manually adjusted price)
+      const finalUnitPrice = p.unitPrice !== undefined ? p.unitPrice : (basePrice - discountAmount);
+      
+      // If unitPrice was manually set, it's a manual override
+      if (p.unitPrice !== undefined && p.unitPrice !== (basePrice - discountAmount)) {
+        discountType = 'manual';
+        discountAmount = basePrice - finalUnitPrice;
+      }
+      
+      return {
+        productName,
+        productType,
+        coverType,
+        plateCompany: p.plateCompany || '',
+        bikeName: p.bikeName || '',
+        plateType: p.plateType || '',
+        formCompany: p.formCompany || '',
+        formType: p.formType || '',
+        formVariant: p.formVariant || '',
+        quantity,
+        basePrice,
+        unitPrice: finalUnitPrice,
+        discountAmount: discountAmount * quantity, // Total discount for all items
+        discountType,
+        totalPrice: quantity * finalUnitPrice,
         category: p.category || '',
         subcategory: p.subcategory || '',
         company: p.company || ''
-      })),
+      };
+    });
+
+    // create slip
+    const newSlip = new Slip({
+      customerName: customerName || 'Walk-in Customer',
+      products: processedProducts,
       subtotal,
       totalAmount,
       status: 'Paid'
@@ -137,7 +195,24 @@ router.post('/', async (req, res) => {
     const incomeRecord = new Income({
       date: new Date(),
       totalIncome: totalAmount,
-      productsSold: newSlip.products,
+      productsSold: newSlip.products.map(p => ({
+        productName: p.productName,
+        sku: p.sku || '',
+        productType: p.productType || 'Cover',
+        coverType: p.coverType || '',
+        plateCompany: p.plateCompany || '',
+        bikeName: p.bikeName || '',
+        plateType: p.plateType || '',
+        formCompany: p.formCompany || '',
+        formType: p.formType || '',
+        formVariant: p.formVariant || '',
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        totalPrice: p.totalPrice,
+        category: p.category || '',
+        subcategory: p.subcategory || '',
+        company: p.company || ''
+      })),
       customerName: newSlip.customerName,
       paymentMethod: newSlip.paymentMethod || 'Cash',
       slipNumber: newSlip.slipNumber,
@@ -279,16 +354,66 @@ router.put('/:id', async (req, res) => {
     if (tax !== undefined) updateData.tax = tax;
     if (discount !== undefined) updateData.discount = discount;
     if (status !== undefined) updateData.status = status;
+    // Helper function for bulk discount (same as in POST)
+    const calculateBulkDiscount = (coverType, quantity, basePrice) => {
+      const bulkDiscountTypes = [
+        'Aster Cover',
+        'Without Aster Cover',
+        'Calendar Cover'
+      ];
+      
+      if (bulkDiscountTypes.includes(coverType) && quantity >= 10) {
+        return 10;
+      }
+      return 0;
+    };
+
     if (products !== undefined) {
-      updateData.products = products.map(p => ({
-        productName: p.productName || p.itemName,
-        quantity: p.quantity,
-        unitPrice: p.unitPrice ?? p.price,
-        totalPrice: p.totalPrice || (p.quantity * (p.unitPrice ?? p.price)),
-        category: p.category || '',
-        subcategory: p.subcategory || '',
-        company: p.company || ''
-      }));
+      updateData.products = products.map(p => {
+        const productName = p.productName || p.itemName;
+        const quantity = p.quantity;
+        const basePrice = p.basePrice || p.unitPrice || p.price || 0;
+        const coverType = p.coverType || '';
+        const productType = p.productType || 'Cover';
+        
+        // Calculate bulk discount if applicable
+        let discountAmount = 0;
+        let discountType = 'none';
+        
+        if (productType === 'Cover' && coverType) {
+          const bulkDiscount = calculateBulkDiscount(coverType, quantity, basePrice);
+          if (bulkDiscount > 0) {
+            discountAmount = bulkDiscount;
+            discountType = 'bulk';
+          }
+        }
+        
+        // Manual discount/override
+        const finalUnitPrice = p.unitPrice !== undefined ? p.unitPrice : (basePrice - discountAmount);
+        
+        if (p.unitPrice !== undefined && p.unitPrice !== (basePrice - discountAmount)) {
+          discountType = 'manual';
+          discountAmount = basePrice - finalUnitPrice;
+        }
+        
+        return {
+          productName,
+          productType,
+          coverType,
+          plateCompany: p.plateCompany || '',
+          bikeName: p.bikeName || '',
+          plateType: p.plateType || '',
+          quantity,
+          basePrice,
+          unitPrice: finalUnitPrice,
+          discountAmount: discountAmount * quantity,
+          discountType,
+          totalPrice: quantity * finalUnitPrice,
+          category: p.category || '',
+          subcategory: p.subcategory || '',
+          company: p.company || ''
+        };
+      });
     }
     if (status === 'Cancelled' && !existingSlip.cancelledAt) {
       updateData.cancelledAt = new Date();
@@ -345,8 +470,14 @@ router.put('/:id', async (req, res) => {
     if (products && Array.isArray(products) && status !== 'Cancelled') {
       const incomeUpdate = {
         totalIncome: totalAmount || updatedSlip.totalAmount,
-        productsSold: products.map(p => ({
+        productsSold: updateData.products || products.map(p => ({
           productName: p.productName || p.itemName,
+          sku: p.sku || '',
+          productType: p.productType || 'Cover',
+          coverType: p.coverType || '',
+          plateCompany: p.plateCompany || '',
+          bikeName: p.bikeName || '',
+          plateType: p.plateType || '',
           quantity: p.quantity,
           unitPrice: p.unitPrice ?? p.price,
           totalPrice: p.totalPrice || (p.quantity * (p.unitPrice ?? p.price)),
