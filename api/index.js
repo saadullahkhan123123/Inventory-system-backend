@@ -29,9 +29,31 @@ app.use(express.urlencoded({ extended: true }));
    ✅ Connect MongoDB Atlas
 ------------------------------------------- */
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB Atlas connected'))
-  .catch((err) => console.error('❌ MongoDB connection failed:', err.message));
+  .connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+    socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+  })
+  .then(() => {
+    console.log('✅ MongoDB Atlas connected');
+    console.log('📊 Database:', mongoose.connection.db.databaseName);
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection failed:', err.message);
+    console.error('❌ Connection error details:', err);
+  });
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
 
 /* -----------------------------------------
    ✅ Root route

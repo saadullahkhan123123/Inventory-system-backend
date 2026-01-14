@@ -195,27 +195,67 @@ router.get('/top-products', async (req, res) => {
 // GET /api/analytics/inventory-levels - Get inventory stock levels
 router.get('/inventory-levels', async (req, res) => {
   try {
-    const items = await Item.find({ isActive: true })
+    console.log('📦 Fetching inventory levels...');
+    
+    // Find items - handle both with and without isActive field, and ensure quantity exists
+    const items = await Item.find({ 
+      $or: [
+        { isActive: { $exists: false } },
+        { isActive: true },
+        { isActive: { $ne: false } }
+      ],
+      quantity: { $exists: true } // Ensure quantity field exists
+    })
       .select('name quantity price category')
       .sort({ quantity: 1 })
-      .limit(50);
+      .limit(50)
+      .lean(); // Use lean() for better performance
+
+    // Ensure quantity is a number, default to 0 if null/undefined/NaN
+    const processedItems = items.map(item => {
+      const qty = typeof item.quantity === 'number' && !isNaN(item.quantity) 
+        ? item.quantity 
+        : 0;
+      return {
+        _id: item._id,
+        name: item.name || 'Unnamed Item',
+        quantity: qty,
+        price: typeof item.price === 'number' ? item.price : 0,
+        category: item.category || 'General'
+      };
+    });
 
     const stockLevels = {
-      outOfStock: items.filter(i => i.quantity === 0),
-      lowStock: items.filter(i => i.quantity > 0 && i.quantity <= 10),
-      inStock: items.filter(i => i.quantity > 10)
+      outOfStock: processedItems.filter(i => i.quantity === 0),
+      lowStock: processedItems.filter(i => i.quantity > 0 && i.quantity <= 10),
+      inStock: processedItems.filter(i => i.quantity > 10)
     };
+
+    console.log(`✅ Inventory levels fetched: ${processedItems.length} items`);
 
     res.json({
       stockLevels,
-      totalItems: items.length,
+      totalItems: processedItems.length,
       message: 'Inventory levels fetched successfully'
     });
   } catch (error) {
     console.error('❌ Error fetching inventory levels:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
+    }
+    
+    // Return a safe response even on error
     res.status(500).json({ 
       error: 'Failed to fetch inventory levels', 
-      details: error.message 
+      details: error.message || 'Unknown error occurred',
+      stockLevels: {
+        outOfStock: [],
+        lowStock: [],
+        inStock: []
+      },
+      totalItems: 0
     });
   }
 });
